@@ -109,7 +109,7 @@ func (dme *GoDNSMadeEasy) doDMERequest(req *http.Request, dst interface{}) error
 	//Try to unmarshal into an error to see if we get any data
 	err = json.Unmarshal(body, genericError)
 	if err != nil {
-		return err
+		return fmt.Errorf("Could not parse response: %v\nData: %v", err, string(body))
 	}
 	if len(genericError.Error) > 0 {
 		return fmt.Errorf(strings.Join(genericError.Error, "\n"))
@@ -135,25 +135,25 @@ type GenericError struct {
 // Domain is our basic information regarding a domain. This does not contain any records.
 type Domain struct {
 	Name        string   `json:"name"`
-	NameServer  []string `json:"nameServer"`
-	GtdEnabled  bool     `json:"gtdEnabled"`
-	ID          int      `json:"id"`
-	FolderID    int      `json:"folderId"`
+	NameServer  []string `json:"nameServer,omitempty"`
+	GtdEnabled  bool     `json:"gtdEnabled,omitempty"`
+	ID          int      `json:"id,omitempty"`
+	FolderID    int      `json:"folderId,omitempty"`
 	NameServers []struct {
 		Fqdn string `json:"fqdn"`
 		Ipv6 string `json:"ipv6"`
 		Ipv4 string `json:"ipv4"`
 	} `json:"nameServers"`
-	Updated             int64         `json:"updated"`
-	TemplateID          int           `json:"templateId"`
-	DelegateNameServers []string      `json:"delegateNameServers"`
-	Created             int64         `json:"created"`
-	TransferAclID       int           `json:"transferAclId"`
-	ActiveThirdParties  []interface{} `json:"activeThirdParties"`
-	VanityID            int           `json:"vanityId"`
-	PendingActionID     int           `json:"pendingActionId"`
-	SoaID               int           `json:"soaId"`
-	ProcessMulti        bool          `json:"processMulti"`
+	Updated             int64         `json:"updated,omitempty"`
+	TemplateID          int           `json:"templateId,omitempty"`
+	DelegateNameServers []string      `json:"delegateNameServers,omitempty"`
+	Created             int64         `json:"created,omitempty"`
+	TransferAclID       int           `json:"transferAclId,omitempty"`
+	ActiveThirdParties  []interface{} `json:"activeThirdParties,omitempty"`
+	VanityID            int           `json:"vanityId,omitempty"`
+	PendingActionID     int           `json:"pendingActionId,omitempty"`
+	SoaID               int           `json:"soaId,omitempty"`
+	ProcessMulti        bool          `json:"processMulti,omitempty"`
 }
 
 // Record represents a DNS record from DNS Made Easy (e.g. A, AAAA, PTR, NS, etc)

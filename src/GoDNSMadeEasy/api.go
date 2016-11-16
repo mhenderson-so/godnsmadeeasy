@@ -157,9 +157,9 @@ func (dme *GoDNSMadeEasy) ExportAllDomains() (*AllDomainExport, error) {
 }
 
 // AddRecord adds a DNS record to a given domain (identified by its ID)
-func (dme *GoDNSMadeEasy) AddRecord(DomainID int, Record *Record) (*Record, error) {
+func (dme *GoDNSMadeEasy) AddRecord(DomainID int, RecordRecord *Record) (*Record, error) {
 	reqStub := fmt.Sprintf("dns/managed/%v/records", DomainID)
-	bodyData, err := json.Marshal(Record)
+	bodyData, err := json.Marshal(RecordRecord)
 	if err != nil {
 		return nil, err
 	}
@@ -169,13 +169,13 @@ func (dme *GoDNSMadeEasy) AddRecord(DomainID int, Record *Record) (*Record, erro
 		return nil, err
 	}
 
-	returnedRecord := &Record
+	returnedRecord := &Record{}
 	err = dme.doDMERequest(req, returnedRecord)
 	if err != nil {
 		return nil, err
 	}
 
-	return Record, err
+	return returnedRecord, err
 }
 
 // UpdateRecord updates an existing DNS record (identified by its ID) in a given domain
@@ -214,4 +214,27 @@ func (dme *GoDNSMadeEasy) DeleteRecord(DomainID, RecordID int) error {
 	}
 
 	return nil
+}
+
+// AddDomain adds a domain to your DNS Made Easy account
+func (dme *GoDNSMadeEasy) AddDomain(DomainRecord *Domain) (*Domain, error) {
+	reqStub := "dns/managed/"
+	bodyData, err := json.Marshal(DomainRecord)
+	if err != nil {
+		return nil, err
+	}
+	bodyBuffer := bytes.NewReader(bodyData)
+	req, err := dme.newRequest("POST", reqStub, bodyBuffer)
+	if err != nil {
+
+		return nil, err
+	}
+
+	returnedDomain := &Domain{}
+	err = dme.doDMERequest(req, returnedDomain)
+	if err != nil {
+		return nil, err
+	}
+
+	return returnedDomain, err
 }
