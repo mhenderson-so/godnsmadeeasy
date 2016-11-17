@@ -243,6 +243,114 @@ func TestSOA(t *testing.T) {
 	}
 }
 
+// TestIPSets creates an IP Set, updates it, then deletes it
+func TestIPSets(t *testing.T) {
+	DMEClient, err := newClient()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	thisIPSet := IPSet{
+		Name: fmt.Sprintf("testipset-%v", time.Now().UnixNano()),
+		Ips:  []string{"127.0.0.1", "127.0.0.2", "127.0.0.3"},
+	}
+	newIPSet, err := DMEClient.AddIPSet(thisIPSet)
+	if err != nil {
+		t.Fatal(err)
+	}
+	newIPSetID := newIPSet.ID
+
+	existingIPSets, err := DMEClient.IPSets()
+	if err != nil {
+		t.Error(err)
+	}
+
+	var foundThisIPSet bool
+	for _, thisIPSet := range existingIPSets {
+		if thisIPSet.ID == newIPSetID {
+			foundThisIPSet = true
+			break
+		}
+	}
+
+	if !foundThisIPSet {
+		t.Errorf("unable to locate new IPSet in existing sets")
+	}
+
+	newIPSet.Name = newIPSet.Name + "updated"
+	err = DMEClient.UpdateIPSet(newIPSet)
+	if err != nil {
+		t.Error(err)
+	}
+
+	err = DMEClient.DeleteIPSet(newIPSet.ID)
+	if err != nil {
+		t.Error(err)
+	}
+
+}
+
+func TestSecondaryDomain(t *testing.T) {
+	DMEClient, err := newClient()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	//To add a secondary domain, we need to specify an IPSet
+	newIPSet, err := DMEClient.AddIPSet(IPSet{
+		Name: fmt.Sprintf("testipset-%v", time.Now().UnixNano()),
+		Ips:  []string{"127.0.0.1", "127.0.0.2", "127.0.0.3"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	folderList, err := DMEClient.Folders()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if folderList == nil {
+		t.Fatal("unable to retrieve folder list")
+	}
+
+	thisDomainName := fmt.Sprintf("gotest-%v.org", time.Now().UnixNano())
+	newSecondaryDomain, err := DMEClient.AddSecondaryDomain(SecondaryDomain{
+		Name:     thisDomainName,
+		IPSetID:  newIPSet.ID,
+		FolderID: folderList[0].Value,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if newSecondaryDomain == nil {
+		t.Fatal("new secondary domain is nil")
+	}
+	if newSecondaryDomain.ID == 0 {
+		t.Error("new secondary domain has 0 ID")
+	}
+
+	//Check that our domain is in the domain list
+	allSecondaryDomains, err := DMEClient.SecondaryDomains()
+	if err != nil {
+		t.Error(err)
+	}
+
+	var foundSecondaryDomain bool
+	for _, thisSecondaryDomain := range allSecondaryDomains {
+		if thisSecondaryDomain.ID == newSecondaryDomain.ID {
+			foundSecondaryDomain = true
+			break
+		}
+	}
+	if !foundSecondaryDomain {
+		t.Error("could not locate secondary domain in domain list")
+	}
+
+	DMEClient.DeleteSecondaryDomain(newSecondaryDomain.ID, 2*time.Minute)
+	DMEClient.DeleteIPSet(newIPSet.ID)
+
+}
+
 // TestExportAll runs the ExportAllDomains() function and sees if it returns any errors. That's about it.
 func TestExportAll(t *testing.T) {
 	DMEClient, err := newClient()

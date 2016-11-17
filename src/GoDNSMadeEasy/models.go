@@ -127,10 +127,7 @@ func (dme *GoDMEConfig) doDMERequest(req *http.Request, dst interface{}) error {
 	genericError := &GenericError{}
 
 	//Try to unmarshal into an error to see if we get any data. A successful delete or update sends no body, so it might throw an error for DELETE or PUT, but that's OK
-	err = json.Unmarshal(body, genericError)
-	if err != nil && req.Method != "PUT" && req.Method != "DELETE" {
-		return fmt.Errorf("Could not parse response: %v\nData: %v", err, string(body))
-	}
+	json.Unmarshal(body, genericError)
 	if len(genericError.Error) > 0 {
 		return fmt.Errorf(strings.Join(genericError.Error, "\n"))
 	}
@@ -159,16 +156,12 @@ type GenericError struct {
 
 // Domain is our basic information regarding a domain. This does not contain any records.
 type Domain struct {
-	Name        string   `json:"name"`
-	NameServer  []string `json:"nameServer,omitempty"`
-	GtdEnabled  bool     `json:"gtdEnabled,omitempty"`
-	ID          int      `json:"id,omitempty"`
-	FolderID    int      `json:"folderId,omitempty"`
-	NameServers []struct {
-		Fqdn string `json:"fqdn"`
-		Ipv6 string `json:"ipv6"`
-		Ipv4 string `json:"ipv4"`
-	} `json:"nameServers"`
+	Name                string        `json:"name"`
+	NameServer          []string      `json:"nameServer,omitempty"`
+	GtdEnabled          bool          `json:"gtdEnabled,omitempty"`
+	ID                  int           `json:"id,omitempty"`
+	FolderID            int           `json:"folderId,omitempty"`
+	NameServers         []NameServer  `json:"nameServers"`
 	Updated             int64         `json:"updated,omitempty"`
 	TemplateID          int           `json:"templateId,omitempty"`
 	DelegateNameServers []string      `json:"delegateNameServers,omitempty"`
@@ -179,6 +172,13 @@ type Domain struct {
 	PendingActionID     int           `json:"pendingActionId,omitempty"`
 	SoaID               int           `json:"soaId,omitempty"`
 	ProcessMulti        bool          `json:"processMulti,omitempty"`
+}
+
+// NameServer is a DNS Made Easy Nameserver record
+type NameServer struct {
+	Fqdn string `json:"fqdn"`
+	Ipv6 string `json:"ipv6"`
+	Ipv4 string `json:"ipv4"`
 }
 
 // Record represents a DNS record from DNS Made Easy (e.g. A, AAAA, PTR, NS, etc)
@@ -231,12 +231,59 @@ type Vanity struct {
 	Default           bool     `json:"default"`
 }
 
+// IPSet is a DNS Made Easy IP Set, used for secondary DNS
+type IPSet struct {
+	Name string   `json:"name"`
+	ID   int      `json:"id"`
+	Ips  []string `json:"ips"`
+}
+
+// SecondaryDomain is the configuration for a secondary DNS domain
+type SecondaryDomain struct {
+	Name              string       `json:"name"`
+	ID                int          `json:"id"`
+	FolderID          int          `json:"folderId"`
+	NameServers       []NameServer `json:"nameServers,omitempty"`
+	NameServerGroupID int          `json:"nameServerGroupId"`
+	PendingActionID   int          `json:"pendingActionId,omitempty"`
+	GtdEnabled        bool         `json:"gtdEnabled"`
+	Updated           int64        `json:"updated,omitempty"`
+	IPSet             IPSet        `json:"ipSet,omitempty"`
+	IPSetID           int          `json:"ipSetId"`
+	Created           int64        `json:"created,omitempty"`
+}
+
 // DomainExport is all of the data about a given domain that we can get from DNS Made Easy
 type DomainExport struct {
 	SOA       *SOA
 	Info      *Domain
 	DefaultNS *Vanity
 	Records   *[]Record
+}
+
+// Folder is a DNS Made Easy folder, used in the list of folders.
+type Folder struct {
+	Value int    `json:"value"`
+	Label string `json:"label"`
+}
+
+// FolderDetail is the detailed information regarding a folder
+type FolderDetail struct {
+	Name              string             `json:"name"`
+	ID                int                `json:"id"`
+	Domains           []int              `json:"domains,omitempty"`
+	Secondaries       []int              `json:"secondaries,omitempty"`
+	FolderPermissions []FolderPermission `json:"folderPermissions,omitempty"`
+	DefaultFolder     bool               `json:"defaultFolder"`
+}
+
+// FolderPermission is used in the Folder struct
+type FolderPermission struct {
+	Permission int    `json:"permission"`
+	FolderID   int    `json:"folderId"`
+	GroupID    int    `json:"groupId"`
+	FolderName string `json:"folderName"`
+	GroupName  string `json:"groupName"`
 }
 
 // AllDomainExport is populated with all of the domains for a given account, and its records
