@@ -36,9 +36,9 @@ func main() {
 	}
 
 	//Use the normal API unless we want to talk to the sandbox API
-	apiURL := "https://api.dnsmadeeasy.com/V2.0/"
+	apiURL := GoDNSMadeEasy.LIVEAPI
 	if *sandbox {
-		apiURL = "https://api.sandbox.dnsmadeeasy.com/V2.0/"
+		apiURL = GoDNSMadeEasy.SANDBOXAPI
 	}
 
 	//Create our client for talking to DNS Made Easy, using the sandbox API

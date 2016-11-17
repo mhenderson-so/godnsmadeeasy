@@ -14,9 +14,15 @@ import (
 	"time"
 )
 
+// LIVEAPI is the URL to the DNS Made Easy live (production) API. To use this you will need an account with DNS Made Easy (https://cp.dnsmadeeasy.com/)
+const LIVEAPI = "https://api.dnsmadeeasy.com/V2.0/"
+
+// SANDBOXAPI is the URL to the DNS Made Easy sandbox (testing) API. To use this you will need an account on the Sandbox system (https://sandbox.dnsmadeeasy.com/)
+const SANDBOXAPI = "https://api.sandbox.dnsmadeeasy.com/V2.0/"
+
 // GoDNSMadeEasy is our struct that contains our API settings, client, etc
 type GoDNSMadeEasy struct {
-	// APIUrl is the full URL of the API to use when communicating to DNS Made Easy. For example, https://api.dnsmadeeasy.com/V2.0/
+	// APIUrl is the full URL of the API to use when communicating to DNS Made Easy. If omitted, this defaults to https://api.dnsmadeeasy.com/V2.0/
 	APIUrl string
 	// APIKey is your DNS Made Easy API key that can be obtained from https://dnsmadeeasy.com/account/info
 	APIKey string
@@ -41,8 +47,9 @@ func NewGoDNSMadeEasy(dme *GoDNSMadeEasy) (*GoDNSMadeEasy, error) {
 		return nil, fmt.Errorf("DNS Made Easy API secret key is blank")
 	}
 
+	//If no API URL is specified, then default to the production API
 	if dme.APIUrl == "" {
-		return nil, fmt.Errorf("DNS Made Easy API URL is blank")
+		dme.APIUrl = LIVEAPI
 	}
 
 	if string(dme.APIUrl[len(dme.APIUrl)-1]) != "/" {
@@ -63,6 +70,12 @@ func NewGoDNSMadeEasy(dme *GoDNSMadeEasy) (*GoDNSMadeEasy, error) {
 }
 
 func (dme *GoDNSMadeEasy) newRequest(Method, APIEndpoint string, body io.Reader) (*http.Request, error) {
+	//Double check we have an API endpoint, just in case someone decides to create this object manually instead of
+	//using NewGoDNSMadeEasy, or they screw around with it after it's created
+	if dme.APIUrl == "" {
+		dme.APIUrl = LIVEAPI
+	}
+
 	//Generate our Hex encoded HMAC SHA1 signature of the current date/time in UTC for our requests
 	timeNow := time.Now().UTC()
 	timeNow = timeNow.Add(dme.TimeAdjust)
