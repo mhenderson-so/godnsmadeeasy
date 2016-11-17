@@ -20,8 +20,8 @@ const LIVEAPI = "https://api.dnsmadeeasy.com/V2.0/"
 // SANDBOXAPI is the URL to the DNS Made Easy sandbox (testing) API. To use this you will need an account on the Sandbox system (https://sandbox.dnsmadeeasy.com/)
 const SANDBOXAPI = "https://api.sandbox.dnsmadeeasy.com/V2.0/"
 
-// GoDNSMadeEasy is our struct that contains our API settings, client, etc
-type GoDNSMadeEasy struct {
+// GoDMEConfig is our struct that contains our API settings, client, etc
+type GoDMEConfig struct {
 	// APIUrl is the full URL of the API to use when communicating to DNS Made Easy. If omitted, this defaults to https://api.dnsmadeeasy.com/V2.0/
 	APIUrl string
 	// APIKey is your DNS Made Easy API key that can be obtained from https://dnsmadeeasy.com/account/info
@@ -37,8 +37,8 @@ type GoDNSMadeEasy struct {
 	dmeClient  *http.Client
 }
 
-// NewGoDNSMadeEasy must be called to construct a GoDNSMadeEasy struct, otherwise there are uninitialised fields that may stop the API from working as expected
-func NewGoDNSMadeEasy(dme *GoDNSMadeEasy) (*GoDNSMadeEasy, error) {
+// NewGoDNSMadeEasy must be called to construct a GoDMEConfig struct, otherwise there are uninitialised fields that may stop the API from working as expected
+func NewGoDNSMadeEasy(dme *GoDMEConfig) (*GoDMEConfig, error) {
 	if dme.APIKey == "" {
 		return nil, fmt.Errorf("DNS Made Easy API key is blank")
 	}
@@ -69,7 +69,7 @@ func NewGoDNSMadeEasy(dme *GoDNSMadeEasy) (*GoDNSMadeEasy, error) {
 	return dme, nil
 }
 
-func (dme *GoDNSMadeEasy) newRequest(Method, APIEndpoint string, body io.Reader) (*http.Request, error) {
+func (dme *GoDMEConfig) newRequest(Method, APIEndpoint string, body io.Reader) (*http.Request, error) {
 	//Double check we have an API endpoint, just in case someone decides to create this object manually instead of
 	//using NewGoDNSMadeEasy, or they screw around with it after it's created
 	if dme.APIUrl == "" {
@@ -98,7 +98,7 @@ func (dme *GoDNSMadeEasy) newRequest(Method, APIEndpoint string, body io.Reader)
 	return thisReq, nil
 }
 
-func (dme *GoDNSMadeEasy) doDMERequest(req *http.Request, dst interface{}) error {
+func (dme *GoDMEConfig) doDMERequest(req *http.Request, dst interface{}) error {
 	resp, err := dme.dmeClient.Do(req)
 	if err != nil {
 		return err

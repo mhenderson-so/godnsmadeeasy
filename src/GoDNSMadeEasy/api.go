@@ -7,7 +7,7 @@ import (
 )
 
 // Domains returns the list of domains managed by DNS Made Easy
-func (dme *GoDNSMadeEasy) Domains() ([]Domain, error) {
+func (dme *GoDMEConfig) Domains() ([]Domain, error) {
 	req, err := dme.newRequest("GET", "dns/managed/", nil)
 	if err != nil {
 		return nil, err
@@ -25,7 +25,7 @@ func (dme *GoDNSMadeEasy) Domains() ([]Domain, error) {
 }
 
 // Domain returns the summary data for a single domain. This is essentially the same as Domains(), but only returns one domain.
-func (dme *GoDNSMadeEasy) Domain(DomainID int) (*Domain, error) {
+func (dme *GoDMEConfig) Domain(DomainID int) (*Domain, error) {
 	reqStub := fmt.Sprintf("dns/managed/%v", DomainID)
 	req, err := dme.newRequest("GET", reqStub, nil)
 	if err != nil {
@@ -42,7 +42,7 @@ func (dme *GoDNSMadeEasy) Domain(DomainID int) (*Domain, error) {
 }
 
 // Records returns the records for a given domain. The domain is specified by its ID, which can be retrieved from Domains()
-func (dme *GoDNSMadeEasy) Records(DomainID int) ([]Record, error) {
+func (dme *GoDMEConfig) Records(DomainID int) ([]Record, error) {
 	reqStub := fmt.Sprintf("dns/managed/%v/records", DomainID)
 	req, err := dme.newRequest("GET", reqStub, nil)
 	if err != nil {
@@ -62,12 +62,12 @@ func (dme *GoDNSMadeEasy) Records(DomainID int) ([]Record, error) {
 }
 
 // Record returns the record for a given record ID. This is essentially the same as Records(), but only returns one record
-func (dme *GoDNSMadeEasy) Record(DomainID, RecordID int) (*Record, error) {
+func (dme *GoDMEConfig) Record(DomainID, RecordID int) (*Record, error) {
 	return nil, fmt.Errorf("Record() Not yet implemented")
 }
 
 // SOA returns custom Start of Authority records for an account.
-func (dme *GoDNSMadeEasy) SOA() ([]SOA, error) {
+func (dme *GoDMEConfig) SOA() ([]SOA, error) {
 	req, err := dme.newRequest("GET", "dns/soa", nil)
 	if err != nil {
 		return nil, err
@@ -86,7 +86,7 @@ func (dme *GoDNSMadeEasy) SOA() ([]SOA, error) {
 }
 
 // Vanity returns custom Vanity name servers for an account
-func (dme *GoDNSMadeEasy) Vanity() ([]Vanity, error) {
+func (dme *GoDMEConfig) Vanity() ([]Vanity, error) {
 	req, err := dme.newRequest("GET", "dns/vanity", nil)
 	if err != nil {
 		return nil, err
@@ -105,7 +105,7 @@ func (dme *GoDNSMadeEasy) Vanity() ([]Vanity, error) {
 }
 
 // ExportAllDomains returns a map with every domain that DNS Made Easy manages, along with its properties
-func (dme *GoDNSMadeEasy) ExportAllDomains() (*AllDomainExport, error) {
+func (dme *GoDMEConfig) ExportAllDomains() (*AllDomainExport, error) {
 	allDomains, err := dme.Domains()
 	if err != nil {
 		return nil, err
@@ -157,7 +157,7 @@ func (dme *GoDNSMadeEasy) ExportAllDomains() (*AllDomainExport, error) {
 }
 
 // AddRecord adds a DNS record to a given domain (identified by its ID)
-func (dme *GoDNSMadeEasy) AddRecord(DomainID int, RecordRecord *Record) (*Record, error) {
+func (dme *GoDMEConfig) AddRecord(DomainID int, RecordRecord *Record) (*Record, error) {
 	reqStub := fmt.Sprintf("dns/managed/%v/records", DomainID)
 	bodyData, err := json.Marshal(RecordRecord)
 	if err != nil {
@@ -179,7 +179,7 @@ func (dme *GoDNSMadeEasy) AddRecord(DomainID int, RecordRecord *Record) (*Record
 }
 
 // UpdateRecord updates an existing DNS record (identified by its ID) in a given domain
-func (dme *GoDNSMadeEasy) UpdateRecord(DomainID int, Record *Record) (*Record, error) {
+func (dme *GoDMEConfig) UpdateRecord(DomainID int, Record *Record) (*Record, error) {
 	reqStub := fmt.Sprintf("dns/managed/%v/records/%v", DomainID, Record.ID)
 	bodyData, err := json.Marshal(Record)
 	if err != nil {
@@ -201,23 +201,17 @@ func (dme *GoDNSMadeEasy) UpdateRecord(DomainID int, Record *Record) (*Record, e
 }
 
 // DeleteRecord deletes an existing DNS record (identified by its ID) in a given domain
-func (dme *GoDNSMadeEasy) DeleteRecord(DomainID, RecordID int) error {
+func (dme *GoDMEConfig) DeleteRecord(DomainID, RecordID int) error {
 	reqStub := fmt.Sprintf("dns/managed/%v/records/%v", DomainID, RecordID)
 	req, err := dme.newRequest("DELETE", reqStub, nil)
 	if err != nil {
 		return err
 	}
-
-	err = dme.doDMERequest(req, nil)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return dme.doDMERequest(req, nil)
 }
 
 // AddDomain adds a domain to your DNS Made Easy account
-func (dme *GoDNSMadeEasy) AddDomain(DomainRecord *Domain) (*Domain, error) {
+func (dme *GoDMEConfig) AddDomain(DomainRecord *Domain) (*Domain, error) {
 	reqStub := "dns/managed/"
 	bodyData, err := json.Marshal(DomainRecord)
 	if err != nil {
@@ -237,4 +231,14 @@ func (dme *GoDNSMadeEasy) AddDomain(DomainRecord *Domain) (*Domain, error) {
 	}
 
 	return returnedDomain, err
+}
+
+// DeleteDomain deletes a domain to your DNS Made Easy account
+func (dme *GoDMEConfig) DeleteDomain(DomainRecord *Domain) error {
+	reqStub := fmt.Sprintf("dns/managed/%v", DomainRecord.ID)
+	req, err := dme.newRequest("DELETE", reqStub, nil)
+	if err != nil {
+		return err
+	}
+	return dme.doDMERequest(req, nil)
 }

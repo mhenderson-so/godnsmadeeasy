@@ -42,7 +42,7 @@ func main() {
 	}
 
 	//Create our client for talking to DNS Made Easy, using the sandbox API
-	DMEClient, err := GoDNSMadeEasy.NewGoDNSMadeEasy(&GoDNSMadeEasy.GoDNSMadeEasy{
+	DMEClient, err := GoDNSMadeEasy.NewGoDNSMadeEasy(&GoDNSMadeEasy.GoDMEConfig{
 		APIKey:               *apiKey,
 		SecretKey:            *secretKey,
 		APIUrl:               apiURL,
