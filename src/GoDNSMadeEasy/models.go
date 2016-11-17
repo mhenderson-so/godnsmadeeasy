@@ -111,6 +111,11 @@ func (dme *GoDMEConfig) doDMERequest(req *http.Request, dst interface{}) error {
 		return err
 	}
 
+	if body != nil {
+		//This is a stupid fix, because DNS Made Easy does not produce valid JSON for some of its error messages.
+		body = []byte(strings.Replace(string(body), "{error:", "{\"error\":", 1))
+	}
+
 	if resp.StatusCode == http.StatusForbidden {
 		return fmt.Errorf("Access forbidden (%s)", req.URL.String())
 	}

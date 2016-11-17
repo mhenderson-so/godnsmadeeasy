@@ -3,6 +3,7 @@ package GoDNSMadeEasy
 import (
 	"flag"
 	"fmt"
+	"regexp"
 	"strings"
 	"sync"
 	"testing"
@@ -10,14 +11,18 @@ import (
 )
 
 var (
-	apiKey         = flag.String("APIKey", "", "Your DNS Made Easy Sandbox API Key")
-	secretKey      = flag.String("SecretKey", "", "Your DNS Made Easy Sandbox Secret Key")
-	timeAdjust     = flag.Int("TimeOffset", 0, "Timestamp adjustment in seconds. DNS Made Easy has a very strict time synchronisation requirement. If your local clock runs slightly fast or slow (even by 30 seconds), requests will fail. You can adjust the timestamp sent by DNS Made Easy here to account for this offset")
-	DomainsCreated = make(map[string]*Domain)
+	apiKey          = flag.String("APIKey", "", "Your DNS Made Easy Sandbox API Key")
+	secretKey       = flag.String("SecretKey", "", "Your DNS Made Easy Sandbox Secret Key")
+	purgeAllDomains = flag.Bool("PurgeAll", false, "Delete every domain matching gotest-* in the account before running any tests. Useful if you have a bunch of failed tests and want to clear it all out.")
+	timeAdjust      = flag.Int("TimeOffset", 0, "Timestamp adjustment in seconds. DNS Made Easy has a very strict time synchronisation requirement. If your local clock runs slightly fast or slow (even by 30 seconds), requests will fail. You can adjust the timestamp sent by DNS Made Easy here to account for this offset")
+	DomainsCreated  = make(map[string]*Domain)
 )
 
 func TestMain(m *testing.M) {
 	flag.Parse()
+	if *purgeAllDomains {
+		doThePurge()
+	}
 	m.Run()
 	cleanUpDomains()
 }
@@ -86,12 +91,167 @@ func TestRecords(t *testing.T) {
 		}
 	}
 
-	//And delete ther records we just Updated
+	//And delete ther records we just updated. This also tests the mass delete function
+	var recordsToDelete []int
 	for _, existingRecord := range CreatedRecords {
-		err := DMEClient.DeleteRecord(DomainID, existingRecord.ID)
-		if err != nil {
-			t.Error(fmt.Sprintf("(delete) %s %s: %s", existingRecord.Type, existingRecord.Name, err))
+		recordsToDelete = append(recordsToDelete, existingRecord.ID)
+	}
+	err = DMEClient.DeleteRecords(DomainID, recordsToDelete)
+	if err != nil {
+		t.Error(fmt.Sprintf("(delete): %s", err))
+	}
+
+}
+
+// TestDomainRead will create a domain, then query for it in two ways: by a direct ID query, and then by looking for it in the complete
+// list of domains returned by DNS Made Easy
+func TestDomainRead(t *testing.T) {
+	DMEClient, err := newClient()
+	if err != nil {
+		t.Fatal(err)
+	}
+	newDomain, err := generateTestDomain(DMEClient)
+	if err != nil {
+		t.Fatal(err)
+	}
+	newDomainID := newDomain.ID
+	t.Log("Using test domain name", newDomain.Name)
+
+	//See if we can retrieve this domain directly
+	fetchDirect, err := DMEClient.Domain(newDomainID)
+	if err != nil {
+		t.Error("direct fetch error: ", err)
+	}
+	if fetchDirect == nil {
+		t.Fatal("direct fetch of domain is nil")
+	}
+	if fetchDirect.ID != newDomainID {
+		t.Errorf("direct fetch domain IDs do not match (%v, %v)", newDomain, fetchDirect.ID)
+	}
+
+	fullDomainList, err := DMEClient.Domains()
+	if err != nil {
+		t.Error("full domain fetch error: ", err)
+	}
+	if len(fullDomainList) == 0 {
+		t.Error("full domain fetch returned 0 records")
+	}
+
+	var foundOurDomain bool
+	for _, thisDomain := range fullDomainList {
+		if thisDomain.ID == newDomainID {
+			foundOurDomain = true
+			break
 		}
+	}
+	if !foundOurDomain {
+		t.Errorf("full domain fetch returned %v records but none of them was our domain", len(fullDomainList))
+	}
+
+}
+
+// TestVanity creates a vanity NS set, checks that it was created, and then assigns it to a domain
+func TestVanity(t *testing.T) {
+	DMEClient, err := newClient()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	newVanity := &Vanity{
+		Name:              fmt.Sprintf("testvanity-%v", time.Now().UnixNano()),
+		Servers:           []string{"ns1.example.org", "ns2.example.org", "ns3.example.org", "ns4.example.org", "ns5.example.org"},
+		NameServerGroupID: 1,
+	}
+
+	addedVanity, err := DMEClient.AddVanity(*newVanity)
+	if err != nil {
+		t.Fatal(err)
+	}
+	newVanityID := addedVanity.ID
+
+	allVanities, err := DMEClient.Vanity()
+	if err != nil {
+		t.Error(err)
+	}
+
+	var foundVanity bool
+	for _, thisVanity := range allVanities {
+		if thisVanity.ID == newVanityID {
+			foundVanity = true
+			break
+		}
+	}
+
+	if !foundVanity {
+		t.Error("could not find our new vanity in vanity list")
+	}
+
+	//Assign vanity to a domain
+	newDomain, err := generateTestDomain(DMEClient)
+	if err != nil {
+		t.Fatal(err)
+	}
+	newDomain.VanityID = newVanityID
+	err = DMEClient.UpdateDomain(newDomain)
+	if err != nil {
+		t.Error(err)
+	}
+
+	//Check that the vanity actually applied
+	fetchedDomain, err := DMEClient.Domain(newDomain.ID)
+	if err != nil {
+		t.Error(err)
+	}
+	if fetchedDomain.VanityID != newVanityID {
+		t.Errorf("Vanity IDs on domain do not match (%v %v)", fetchedDomain.VanityID, newVanityID)
+	}
+}
+
+// TestSOA creates an SOA, updates it, then deletes it
+func TestSOA(t *testing.T) {
+	DMEClient, err := newClient()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	newSOA := SOA{
+		Name:          fmt.Sprintf("testsoa-%v", time.Now().UnixNano()),
+		Comp:          "test.example.org",
+		Email:         "test.example.org",
+		TTL:           21600,
+		Serial:        1337,
+		Refresh:       86400,
+		Retry:         300,
+		Expire:        86400,
+		NegativeCache: 600,
+	}
+
+	createdSOA, err := DMEClient.AddSOA(newSOA)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	createdSOA.Name += "updated"
+	err = DMEClient.UpdateSOA(createdSOA)
+	if err != nil {
+		t.Error(err)
+	}
+
+	err = DMEClient.DeleteSOA(createdSOA.ID)
+	if err != nil {
+		t.Error(err)
+	}
+}
+
+// TestExportAll runs the ExportAllDomains() function and sees if it returns any errors. That's about it.
+func TestExportAll(t *testing.T) {
+	DMEClient, err := newClient()
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = DMEClient.ExportAllDomains()
+	if err != nil {
+		t.Error(err)
 	}
 }
 
@@ -333,4 +493,41 @@ func compareRecords(a, b *Record) []string {
 		}
 	}
 	return mismatches
+}
+
+func doThePurge() error {
+	DMEClient, err := newClient()
+	if err != nil {
+		return err
+	}
+
+	domains, err := DMEClient.Domains()
+	if err != nil {
+		return err
+	}
+
+	TestDomainMatch := regexp.MustCompile("^gotest-\\d+\\.org$")
+
+	var wg sync.WaitGroup
+	for _, thisDomain := range domains { //Loop through the domains we created during this testing
+		if !TestDomainMatch.MatchString(thisDomain.Name) {
+			fmt.Println("Skipping", thisDomain.Name)
+			continue
+		}
+
+		wg.Add(1)                   //Add one to the wait group
+		go func(delDomain Domain) { //Delete the domains asynchronously
+			defer wg.Done()                         //When this is finished, indicate to the Wait Group that we're done
+			fmt.Println("Deleting", delDomain.Name) //Send something to console so we know what's going on
+
+			err := DMEClient.DeleteDomain(delDomain.ID, 2*time.Minute) //Delete the domain, with a 2 minute timeout. Sandbox takes around 50 seconds on average
+			if err != nil {
+				fmt.Println("Could not delete", delDomain.Name, "error:", err)
+			}
+
+		}(thisDomain)
+	}
+	wg.Wait() //Wait for all the Done()'s to come through
+
+	return nil
 }
