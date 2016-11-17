@@ -2,131 +2,74 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"time"
 
-	"github.com/mhenderson-so/godnsmadeeasy/src/godnsmadeeasy"
+	"github.com/mhenderson-so/godnsmadeeasy/src/GoDNSMadeEasy"
+)
+
+var (
+	apiKey     = flag.String("APIKey", "", "Your DNS Made Easy API Key")
+	secretKey  = flag.String("SecretKey", "", "Your DNS Made Easy Secret Key")
+	sandbox    = flag.Bool("Sandbox", false, "Use the DNS Made Easy Sandbox API")
+	timeAdjust = flag.Int("TimeOffset", 0, "Timestamp adjustment in seconds. DNS Made Easy has a very strict time synchronisation requirement. If your local clock runs slightly fast or slow (even by 30 seconds), requests will fail. You can adjust the timestamp sent by DNS Made Easy here to account for this offset")
 )
 
 func main() {
+	//Parse command-line flags
+	flag.Parse()
 
+	//Validate that the appropriate flags have been provided
+	if *apiKey == "" {
+		fmt.Println("You must provide your DNS Made Easy API Key")
+		fmt.Println("Flags:")
+		flag.PrintDefaults()
+		return
+	}
+
+	if *secretKey == "" {
+		fmt.Println("You must provide your DNS Made Easy Secret Key")
+		fmt.Println("Flags:")
+		flag.PrintDefaults()
+		return
+	}
+
+	//Use the normal API unless we want to talk to the sandbox API
+	apiURL := "https://api.dnsmadeeasy.com/V2.0/"
+	if *sandbox {
+		apiURL = "https://api.sandbox.dnsmadeeasy.com/V2.0/"
+	}
+
+	//Create our client for talking to DNS Made Easy, using the sandbox API
 	DMEClient, err := GoDNSMadeEasy.NewGoDNSMadeEasy(&GoDNSMadeEasy.GoDNSMadeEasy{
-		APIKey:               "",
-		SecretKey:            "",
-		APIUrl:               "https://api.sandbox.dnsmadeeasy.com/V2.0/",
-		DisableSSLValidation: true,
+		APIKey:               *apiKey,
+		SecretKey:            *secretKey,
+		APIUrl:               apiURL,
+		DisableSSLValidation: *sandbox, //Only disable SSL validation for the sandbox
+		TimeAdjust:           (time.Duration(*timeAdjust) * time.Second),
 	})
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
+	//For this demo, all we're going to do is invoke the ExportAllDomains() function, which gets all of our
+	//domains from DNS Made Easy and dumps their data into a single object. This makes several read calls to the
+	//API, and is good enough for testing connectivity and credentials to the API
 	allDomains, err := DMEClient.ExportAllDomains()
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	json, err := json.Marshal(allDomains)
+
+	//Pretty-print our domain data
+	json, err := json.MarshalIndent(allDomains, "", "    ")
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
+	//Dump the exported data as JSON, pretty-printed to the console
 	fmt.Println(string(json))
-
-	for domain, data := range *allDomains {
-		fmt.Println(domain, data.Info.ID)
-		timeStamp := time.Now().UnixNano()
-		newRecord := &GoDNSMadeEasy.Record{
-			Type:        "A",
-			Name:        fmt.Sprintf("testrecord-%v", timeStamp),
-			Value:       "127.0.0.1",
-			GtdLocation: "DEFAULT",
-			TTL:         300,
-		}
-		returnedRecord, err := DMEClient.AddRecord(data.Info.ID, newRecord)
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-		if returnedRecord.Failed {
-			fmt.Printf("Create record failed:%v+\n", returnedRecord)
-		} else {
-			fmt.Println("-- Created record OK:", returnedRecord.ID, "--")
-		}
-
-		returnedRecord.Name = fmt.Sprintf("postupdate-%s", returnedRecord.Name)
-		DMEClient.UpdateRecord(data.Info.ID, returnedRecord)
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-		if returnedRecord.Failed {
-			fmt.Printf("Update record failed:%v+\n", returnedRecord)
-		} else {
-			fmt.Println("-- Update record OK:", returnedRecord.ID, "--")
-		}
-
-		err = DMEClient.DeleteRecord(data.Info.ID, returnedRecord.ID)
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-
-		fmt.Println("-- Deleted record OK:", returnedRecord.ID, "--")
-
-	}
-
-	/*
-		fmt.Println("-- Getting domain list")
-		domains, err := DMEClient.Domains()
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-
-			domainID := domains[len(domains)-1].ID
-			fmt.Println("-- Domain", domainID)
-
-			domain, err := DMEClient.Domain(domainID)
-			if err != nil {
-				fmt.Println(err)
-				return
-			}
-			fmt.Printf("%+v\n", domain)
-
-			fmt.Println("-- Domain Records for", domainID)
-			records, err := DMEClient.Records(domainID)
-			if err != nil {
-				fmt.Println(err)
-				return
-			}
-			fmt.Printf("%+v\n", records)
-
-				recordID := records[len(records)-1].ID
-				fmt.Println("-- Domain Record for", domainID, ",", recordID)
-				record, err := DMEClient.Record(domainID, recordID)
-				if err != nil {
-					fmt.Println(err)
-					return
-				}
-				fmt.Printf("%+v\n", record)
-
-
-			fmt.Println("-- SOA")
-			soa, err := DMEClient.SOA()
-			if err != nil {
-				fmt.Println(err)
-				return
-			}
-			fmt.Printf("%+v\n", soa)
-
-			fmt.Println("-- Vanity Nameservers")
-			vanity, err := DMEClient.Vanity()
-			if err != nil {
-				fmt.Println(err)
-				return
-			}
-			fmt.Printf("%+v\n", vanity)
-	*/
 }

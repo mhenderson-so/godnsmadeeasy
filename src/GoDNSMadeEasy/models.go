@@ -24,7 +24,11 @@ type GoDNSMadeEasy struct {
 	SecretKey string
 	// DisableSSLValidation disables the validation of the SSL certificate when using HTTPS. This is useful for the DNS Made Easy sandbox, which does not contain a valid certificate
 	DisableSSLValidation bool
-	dmeClient            *http.Client
+	// TimeAdjust is used for changing how fast/slow the timestamps used when authenticating with DNS Made Easy are. Normally you would just leave this at 0
+	// and send a real timestamp, but DNS Made Easy has very strict requirements around time synchronisation. So if you're unlucky and your system time is a
+	// touch fast or slow, you can adjust the timestamp we send using TimeAdjust to make it more accurate to UTC.
+	TimeAdjust time.Duration
+	dmeClient  *http.Client
 }
 
 // NewGoDNSMadeEasy must be called to construct a GoDNSMadeEasy struct, otherwise there are uninitialised fields that may stop the API from working as expected
@@ -61,7 +65,7 @@ func NewGoDNSMadeEasy(dme *GoDNSMadeEasy) (*GoDNSMadeEasy, error) {
 func (dme *GoDNSMadeEasy) newRequest(Method, APIEndpoint string, body io.Reader) (*http.Request, error) {
 	//Generate our Hex encoded HMAC SHA1 signature of the current date/time in UTC for our requests
 	timeNow := time.Now().UTC()
-	timeNow = timeNow.Add(15 * time.Second)
+	timeNow = timeNow.Add(dme.TimeAdjust)
 	timeNowString := timeNow.Format(time.RFC1123)
 	key := []byte(dme.SecretKey)
 	h := hmac.New(sha1.New, key)
