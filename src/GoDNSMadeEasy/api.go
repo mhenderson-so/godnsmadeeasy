@@ -179,26 +179,26 @@ func (dme *GoDMEConfig) AddRecord(DomainID int, RecordRecord *Record) (*Record, 
 	return returnedRecord, err
 }
 
-// UpdateRecord updates an existing DNS record (identified by its ID) in a given domain
-func (dme *GoDMEConfig) UpdateRecord(DomainID int, Record *Record) (*Record, error) {
+// UpdateRecord updates an existing DNS record (identified by its ID) in a given domain. DNS Made Easy only returns success/fail for this method.
+func (dme *GoDMEConfig) UpdateRecord(DomainID int, Record *Record) error {
 	reqStub := fmt.Sprintf("dns/managed/%v/records/%v", DomainID, Record.ID)
 	bodyData, err := json.Marshal(Record)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	bodyBuffer := bytes.NewReader(bodyData)
 	req, err := dme.newRequest("PUT", reqStub, bodyBuffer)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	returnedRecord := &Record
-	err = dme.doDMERequest(req, returnedRecord)
+	//A PUT request does not return a body, so we'll do another Get
+	err = dme.doDMERequest(req, nil)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return Record, err
+	return err
 }
 
 // DeleteRecord deletes an existing DNS record (identified by its ID) in a given domain

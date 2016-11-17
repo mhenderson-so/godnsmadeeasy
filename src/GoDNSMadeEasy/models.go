@@ -121,9 +121,9 @@ func (dme *GoDMEConfig) doDMERequest(req *http.Request, dst interface{}) error {
 	//fmt.Println(string(body))
 	genericError := &GenericError{}
 
-	//Try to unmarshal into an error to see if we get any data. A successful delete sends no body, so it might throw an error for DELETE, but that's OK
+	//Try to unmarshal into an error to see if we get any data. A successful delete or update sends no body, so it might throw an error for DELETE or PUT, but that's OK
 	err = json.Unmarshal(body, genericError)
-	if err != nil && req.Method != "DELETE" {
+	if err != nil && req.Method != "PUT" && req.Method != "DELETE" {
 		return fmt.Errorf("Could not parse response: %v\nData: %v", err, string(body))
 	}
 	if len(genericError.Error) > 0 {
@@ -131,7 +131,7 @@ func (dme *GoDMEConfig) doDMERequest(req *http.Request, dst interface{}) error {
 	}
 
 	//If we are deleting a record and got this far, then it's been successful
-	if req.Method == "DELETE" {
+	if req.Method == "PUT" || req.Method == "DELETE" {
 		return nil
 	}
 
