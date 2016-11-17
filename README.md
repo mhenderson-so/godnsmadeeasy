@@ -13,7 +13,7 @@ import "github.com/mhenderson-so/godnsmadeeasy/src/GoDNSMadeEasy"
 DMEClient, err := GoDNSMadeEasy.NewGoDNSMadeEasy(&GoDNSMadeEasy.GoDNSMadeEasy{
     APIKey:               "d775b7a7-8192-46d2-80e8-53b95fda4931",
     SecretKey:            "c69f34e9-d8bc-4e0d-99b6-59476e73b61d",
-    APIUrl:               "https://api.dnsmadeeasy.com/V2.0/",
+    APIUrl:               GoDNSMadeEasy.LIVEAPI,
     DisableSSLValidation: false,
 })
 if err != nil {
