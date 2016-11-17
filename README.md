@@ -6,6 +6,10 @@ to query domain data and records, and update records.
 
 # Usage
 
+## GoDoc
+Documentation for the API can be found at [https://godoc.org/github.com/mhenderson-so/godnsmadeeasy/src/GoDNSMadeEasy](https://godoc.org/github.com/mhenderson-so/godnsmadeeasy/src/GoDNSMadeEasy)
+
+## Basic Usage
 Create a new DNS Made Easy client with `NewGoDNSMadeEasy`:
 ```Go
 import "github.com/mhenderson-so/godnsmadeeasy/src/GoDNSMadeEasy"
