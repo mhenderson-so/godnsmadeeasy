@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"time"
 )
 
 // Domains returns the list of domains managed by DNS Made Easy
@@ -233,12 +234,38 @@ func (dme *GoDMEConfig) AddDomain(DomainRecord *Domain) (*Domain, error) {
 	return returnedDomain, err
 }
 
-// DeleteDomain deletes a domain to your DNS Made Easy account
-func (dme *GoDMEConfig) DeleteDomain(DomainRecord *Domain) error {
-	reqStub := fmt.Sprintf("dns/managed/%v", DomainRecord.ID)
+// DeleteDomain deletes a domain to your DNS Made Easy account. The DeleteTimeout argument indicates how long we should keep trying to
+// delete the domain if DNS Made Easy says it can't delete the domain due to a pending operation. In these cases, usually deleting a domain
+// name will succeed after a certain period of time. You may not want to wait for this time though, so specify 0 here to never retry.
+func (dme *GoDMEConfig) DeleteDomain(DomainID int, DeleteTimeout time.Duration) error {
+	timeOutAt := time.Now().Add(DeleteTimeout)
+
+	reqStub := fmt.Sprintf("dns/managed/%v", DomainID)
 	req, err := dme.newRequest("DELETE", reqStub, nil)
 	if err != nil {
 		return err
 	}
-	return dme.doDMERequest(req, nil)
+	//Try to delete once
+	deleteError := dme.doDMERequest(req, nil)
+	if deleteError == nil || DeleteTimeout == 0 {
+		return deleteError
+	}
+
+	//If we were unsuccessful in deleting the first time, try try again until the timeout
+	for time.Now().Before(timeOutAt) {
+		req, _ := dme.newRequest("DELETE", reqStub, nil)
+		deleteError := dme.doDMERequest(req, nil)
+		//No error? Then we're all done.
+		if deleteError == nil {
+			return deleteError
+		}
+		//We got a different error this time that is not a pending delete error
+		if deleteError.Error() != pendingDeleteError {
+			return deleteError
+		}
+		time.Sleep(5 * time.Second)
+	}
+
+	return fmt.Errorf("Could not delete domain after %s (%s)", DeleteTimeout.String(), err)
+
 }

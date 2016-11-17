@@ -20,6 +20,8 @@ const LIVEAPI = "https://api.dnsmadeeasy.com/V2.0/"
 // SANDBOXAPI is the URL to the DNS Made Easy sandbox (testing) API. To use this you will need an account on the Sandbox system (https://sandbox.dnsmadeeasy.com/)
 const SANDBOXAPI = "https://api.sandbox.dnsmadeeasy.com/V2.0/"
 
+const pendingDeleteError = "Cannot delete a domain that is pending a create or delete action."
+
 // GoDMEConfig is our struct that contains our API settings, client, etc
 type GoDMEConfig struct {
 	// APIUrl is the full URL of the API to use when communicating to DNS Made Easy. If omitted, this defaults to https://api.dnsmadeeasy.com/V2.0/
@@ -119,17 +121,18 @@ func (dme *GoDMEConfig) doDMERequest(req *http.Request, dst interface{}) error {
 	//fmt.Println(string(body))
 	genericError := &GenericError{}
 
-	//If we are deleting a record and got this far, then it's been successful
-	if req.Method == "DELETE" {
-		return nil
-	}
-	//Try to unmarshal into an error to see if we get any data
+	//Try to unmarshal into an error to see if we get any data. A successful delete sends no body, so it might throw an error for DELETE, but that's OK
 	err = json.Unmarshal(body, genericError)
-	if err != nil {
+	if err != nil && req.Method != "DELETE" {
 		return fmt.Errorf("Could not parse response: %v\nData: %v", err, string(body))
 	}
 	if len(genericError.Error) > 0 {
 		return fmt.Errorf(strings.Join(genericError.Error, "\n"))
+	}
+
+	//If we are deleting a record and got this far, then it's been successful
+	if req.Method == "DELETE" {
+		return nil
 	}
 
 	err = json.Unmarshal(body, dst)
