@@ -1,19 +1,19 @@
 # GoDNSMadeEasy
 GoDNSMadeEasy is a GoLang library for accessing the DNS Made Easy API. It is not currently feature-complete. API coverage is as follows:
 
-| Feature            | Create  | Update  | Delete 
+| Feature            | List | Create  | Update  | Delete 
 |--------------------|---|---|---|---|
-| Primary Domains    | ✓ |  ✓ | ✓ 
-| Secondary Domains  |   |   |   
-| Records            | ✓ | ✓ | ✓ 
-| Vanity NS          | ✓ | ✓ | ✓ 
-| Custom SOA         | ✓ | ✓ | ✓ 
-| Templates          |   |   |   
-| Transfer ACLs      |   |   |   
-| Folders            |   |   |   
-| Usage              |   | N/A  | N/A  
-| Failover Monitor   |   |   |   N/A   
-| IPset Fields       |   |   |    
+| Primary Domains    | ✓ | ✓ |  ✓ | ✓ 
+| Secondary Domains  |   |   |   |   
+| Records            | ✓ | ✓ | ✓ | ✓ 
+| Vanity NS          | ✓ | ✓ | ✓ | ✓ 
+| Custom SOA         | ✓ | ✓ | ✓ | ✓ 
+| Templates          |   |   |   |   
+| Transfer ACLs      |   |   |   |   
+| Folders            |   |   |   |   
+| Usage              |   |N/A| N/A  | N/A  
+| Failover Monitor   |   |   |   |   N/A   
+| IPset Fields       |   |   |   |    
 
 # Usage
 
